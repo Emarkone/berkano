@@ -143,8 +143,7 @@ class TrackerController extends Controller
         if (is_null($this->user)) {
             return $this->failureResponse('User unknown');
         }
-
-        $this->basicAuth($request, $id);
+        
         $this->stats();
 
         return $this->successResponse(array('file' => $request->get('info_hash'), 'complete' => $this->seeders, 'downloaded' => $this->completed, 'incomplete' => $this->leechers));
