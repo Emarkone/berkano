@@ -25,12 +25,12 @@ class PeerTorrents extends Model
 
     public function setDownloadAttribute($value)
     {
-        $this->attributes['download'] = round($value/1048576);
+        $this->attributes['download'] = round($value/1000000);
     }
 
     public function setUploadAttribute($value)
     {
-        $this->attributes['upload'] = round($value/1048576);
+        $this->attributes['upload'] = round($value/1000000);
     }
 
     public function peer() 

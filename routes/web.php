@@ -19,3 +19,4 @@ Route::get('/', function () {
 });
 
 Route::get('/{id}/announce', [TrackerController::class, 'track'])->name('announce');
+Route::get('/{id}/scrape', [TrackerController::class, 'scrape'])->name('scrape');
