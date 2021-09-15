@@ -14,6 +14,8 @@ use SandFox\Bencode\Bencode;
 class TrackerController extends Controller
 {
     public $interval = 1800;
+    
+    public $failure_reason;
 
     public $user;
     public $torrent;
@@ -23,9 +25,8 @@ class TrackerController extends Controller
     public $completed;
 
 
-    public function track(Request $request, $id)
+    public function basicAuth(Request $request, $id)
     {
-
         if ($request->get('test')) {
             $this->torrent = Torrent::where('hash', '=', $request->get('info_hash'))->first();
         } else {
@@ -33,13 +34,23 @@ class TrackerController extends Controller
         }
 
         if (is_null($this->torrent)) {
-            return $this->failureResponse('File unknown');
+            $this->failure_reason = 'File unknown';
+            return false;
         } 
 
         $this->user = User::where('uuid', '=', $id)->first();
         if (is_null($this->user)) {
-            return $this->failureResponse('User unknown');
+            $this->failure_reason = 'File unknown';
+            return false;
         }
+
+        return true;
+    }
+
+    public function track(Request $request, $id)
+    {
+
+        if(!$this->basicAuth($request,$id)) return $this->failureResponse();
 
         $this->stats();
 
@@ -129,21 +140,8 @@ class TrackerController extends Controller
 
     public function scrape(Request $request, $id)
     {
-        if ($request->get('test')) {
-            $this->torrent = Torrent::where('hash', '=', $request->get('info_hash'))->first();
-        } else {
-            $this->torrent = Torrent::where('hash', '=', bin2hex($request->get('info_hash')))->first();
-        }
+        if(!$this->basicAuth($request,$id)) return $this->failureResponse();
 
-        if (is_null($this->torrent)) {
-            return $this->failureResponse('File unknown');
-        } 
-
-        $this->user = User::where('uuid', '=', $id)->first();
-        if (is_null($this->user)) {
-            return $this->failureResponse('User unknown');
-        }
-        
         $this->stats();
 
         return $this->successResponse(array('file' => $request->get('info_hash'), 'complete' => $this->seeders, 'downloaded' => $this->completed, 'incomplete' => $this->leechers));
@@ -165,9 +163,9 @@ class TrackerController extends Controller
     }
 
 
-    protected function failureResponse($reason)
+    protected function failureResponse()
     {
-        $reason = Bencode::encode(array('failure reason' => $reason));
+        $reason = Bencode::encode(array('failure reason' => $this->failure_reason));
         return response($reason, 200)
             ->header('Content-Type', 'text/plain');
     }
