@@ -23,6 +23,16 @@ class PeerTorrents extends Model
         'is_leeching' => 'boolean'
     ];
 
+    public function setDownloadAttribute($value)
+    {
+        $this->attributes['download'] = round($value/1048576);
+    }
+
+    public function setUploadAttribute($value)
+    {
+        $this->attributes['first_name'] = round($value/1048576);
+    }
+
     public function peer() 
     {
         return $this->hasOne('peer');

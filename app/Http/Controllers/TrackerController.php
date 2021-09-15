@@ -41,6 +41,7 @@ class TrackerController extends Controller
             $peer->expire = Carbon::now()->addHours(6);
         }
 
+        $peer->is_active = true;
         $peer->save();
 
         // Global stats
