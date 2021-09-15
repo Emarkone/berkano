@@ -17,8 +17,6 @@ class CreateTorrentsTable extends Migration
             $table->id();
             $table->foreignId('user_id');
             $table->string('hash');
-            $table->integer('leech');
-            $table->integer('seed');
             $table->timestamps();
         });
     }

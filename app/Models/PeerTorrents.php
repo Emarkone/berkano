@@ -14,6 +14,7 @@ class PeerTorrents extends Model
     protected $fillable = [
         'peer_id',
         'torrent_id',
+        'leeching'
     ];
 
     public function peer() 
