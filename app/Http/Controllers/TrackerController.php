@@ -61,7 +61,10 @@ class TrackerController extends Controller
             });
         }
 
-        $response = Bencode::encode(array('peers' => $peers, 'complete' => $peerTorrent->where('leeching', '=', 'false')->get()->count(), 'incomplete'=> $peerTorrent->where('leeching', '=', 'true')->get()->count(), 'interval' => 600));
+        $leechers = PeerTorrents::where('leeching', '=', 'true')->where('torrent_id','=',$torrent->id)->get()->count();
+        $seeders = PeerTorrents::where('leeching', '=', 'false')->where('torrent_id','=',$torrent->id)->get()->count();
+
+        $response = Bencode::encode(array('peers' => $peers, 'complete' => $seeders, 'incomplete'=> $leechers, 'interval' => 600));
 
         return response()->view('tracker', ['bencode' => $response]);
     }
