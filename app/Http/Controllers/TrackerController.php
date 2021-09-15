@@ -59,6 +59,7 @@ class TrackerController extends Controller
                 $_port = substr("0000".dechex($peer['port']), strlen(dechex($peer['port'])), 4);
                 return hex2bin($_ip.$_port);
             });
+            $peers = implode('', $peers);
         }
 
         $leechers = PeerTorrents::where('leeching', '=', 'true')->where('torrent_id','=',$torrent->id)->get()->count();
