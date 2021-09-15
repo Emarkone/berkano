@@ -31,34 +31,43 @@ class TrackerController extends Controller
         $peer = Peer::where('user_id','=',$user->id)->where('ip','=',$this->getIp())->where('port','=',$request->get('port'))->first();
 
         if($peer) {
-            $peer->expire = Carbon::parse($peer->expire)->addMinutes(15);
+            $peer->expire = Carbon::parse($peer->expire)->addHours(2);
         } else {
             $peer = Peer::create(
                 ['user_id' => $user->id, 'ip' => $this->getIp(), 'port' => $request->get('port')]
             );
-            $peer->expire = Carbon::now()->addMinutes(15);
+            $peer->expire = Carbon::now()->addHours(2);
         }
 
         $peer->save();
 
 
         // Roles assignement
-        $leeching = ($request->get('left') != 0);
+        $peer_torrent = PeerTorrents::where('peer_id','=', $peer->id)->where('torrent_id', '=', $torrent->id)->first();
 
-        PeerTorrents::firstOrCreate(
-            ['peer_id' => $peer->id, 'torrent_id' => $torrent->id, 'leeching' => $leeching]
-        );
+        if(!$peer_torrent) {
+            $peer_torrent = PeerTorrents::create(
+                ['peer_id' => $peer->id, 'torrent_id' => $torrent->id]
+            );
+        }
+
+        $peer_torrent->leeching = ($request->get('left') != 0);
 
         if($request->get('event') && !empty($request->get('event'))) {
             switch ($request->get('event')) {
                 case 'stopped':
-                    PeerTorrents::where('peer_id','=', $peer->id)->where('torrent_id', '=', $torrent->id)->delete();
+                    $peer_torrent->delete();
                     $peer->delete();
                     break;
+                case 'completed':
+                    $peer_torrent->leeching = false;
                 default:
                     break;
             }
         }
+
+        $peer_torrent->save();
+
 
         // Cleaning inactive peers
         $expired_peers = Peer::where('expire','<',Carbon::now())->get();
@@ -66,6 +75,7 @@ class TrackerController extends Controller
             PeerTorrents::where('peer_id', '=', $expired_peer->id)->delete();
             $expired_peer->delete();
         }
+        
 
         // Peers delivery
         if($request->get('compact') != 1) {
