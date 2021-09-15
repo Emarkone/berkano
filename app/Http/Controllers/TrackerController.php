@@ -136,17 +136,17 @@ class TrackerController extends Controller
 
     protected function stats()
     {
-        $torrent = PeerTorrents::where('torrent_id', '=', $this->torrent->id);
+        $torrents = PeerTorrents::where('torrent_id', '=', $this->torrent->id)->get();
 
-        $this->leechers = $torrent->filter(function ($torrent) {
+        $this->leechers = $torrents->filter(function ($torrent) {
             return $torrent->is_leeching;
         });
 
-        $this->seeders  = $torrent->reject(function ($torrent) {
+        $this->seeders  = $torrents->reject(function ($torrent) {
             return $torrent->is_leeching;
         });
 
-        $this->completed = $torrent->completed;
+        $this->completed = $this->torrent->completed;
     }
 
 
