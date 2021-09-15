@@ -78,9 +78,6 @@ class TrackerController extends Controller
                 $port = substr("0000".dechex($peer['port']), strlen(dechex($peer['port'])), 4);
                 return $ip.$port;
             })->toArray()));
-
-            return response(bin2hex($peers), 200)
-                  ->header('Content-Type', 'text/plain');
         }
 
         // Global stats
