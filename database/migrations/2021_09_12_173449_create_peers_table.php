@@ -19,7 +19,7 @@ class CreatePeersTable extends Migration
             $table->ipAddress('ip');
             $table->integer('port');
             $table->dateTime('expire')->nullable();
-            $table->boolean('active')->default(true);
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
     }
