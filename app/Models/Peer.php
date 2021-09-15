@@ -14,6 +14,7 @@ class Peer extends Model
         'peer_id',
         'ip',
         'port',
+        'expire'
     ];
 
     public function user()

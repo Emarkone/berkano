@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Torrent;
 use App\Models\User;
 use App\Models\PeerTorrents;
+use Carbon\Carbon;
 use SandFox\Bencode\Bencode;
 
 class TrackerController extends Controller
@@ -26,10 +27,19 @@ class TrackerController extends Controller
         $user = User::where('uuid', '=', $id)->first();
         if(!$user) return $this->failureResponse('User unknown');
 
+        // Peer management
         $peer = Peer::firstOrCreate(
             ['user_id' => $user->id, 'ip' => $request->ip(), 'port' => $request->get('port')]
         );
-    
+
+        if(!$peer->expire) {
+            $peer->expire = Carbon::now()->addMinutes(10);
+        } else {
+            $peer->expire = Carbon::parse($peer->expire)->addMinutes(10);
+        }
+
+        $peer->save();
+        
         $leeching = ($request->get('left') != 0);
 
         PeerTorrents::firstOrCreate(
@@ -46,7 +56,16 @@ class TrackerController extends Controller
                     break;
             }
         }
-        
+
+        // Cleaning inactive peers
+        $expired_peers = Peer::where('expire','<',Carbon::now())->get();
+
+        foreach($expired_peers as $expired_peer) {
+            PeerTorrents::where('peer_id', '=', $expired_peer->id)->delete();
+            $expired_peer->delete();
+        }
+
+        // Peers delivery
         if($request->get('compact') != 1) {
             $peers = $torrent->peers->map(function ($peer) {
                 return collect($peer->toArray())
@@ -61,6 +80,7 @@ class TrackerController extends Controller
             })->toArray()));
         }
 
+        // Global stats
         $leechers = PeerTorrents::where('leeching', '=', 'true')->where('torrent_id','=',$torrent->id)->get()->count();
         $seeders = PeerTorrents::where('leeching', '=', 'false')->where('torrent_id','=',$torrent->id)->get()->count();
 

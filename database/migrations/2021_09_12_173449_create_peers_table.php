@@ -18,6 +18,7 @@ class CreatePeersTable extends Migration
             $table->foreignId('user_id');
             $table->ipAddress('ip');
             $table->integer('port');
+            $table->dateTime('expire')->nullable();
             $table->timestamps();
         });
     }
