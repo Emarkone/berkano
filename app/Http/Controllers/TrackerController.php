@@ -32,7 +32,7 @@ class TrackerController extends Controller
     
         $leeching = ($request->get('left') != 0);
 
-        $peerTorrent = PeerTorrents::firstOrCreate(
+        PeerTorrents::firstOrCreate(
             ['peer_id' => $peer->id, 'torrent_id' => $torrent->id, 'leeching' => $leeching]
         );
 
@@ -57,9 +57,9 @@ class TrackerController extends Controller
             $peers = $torrent->peers->map(function ($peer) {
                 $_ip = implode('',array_map(fn($value): string => substr("00".dechex($value),strlen(dechex($value)),2), explode('.',$peer['ip'])));
                 $_port = substr("0000".dechex($peer['port']), strlen(dechex($peer['port'])), 4);
-                return hex2bin($_ip.$_port);
+                return $_ip.$_port;
             });
-            $peers = implode('', $peers);
+            $peers = hex2bin(implode('', $peers));
         }
 
         $leechers = PeerTorrents::where('leeching', '=', 'true')->where('torrent_id','=',$torrent->id)->get()->count();
