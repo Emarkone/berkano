@@ -28,7 +28,7 @@ class TrackerController extends Controller
         if(!$user) return $this->failureResponse('User unknown');
 
         // Peer management
-        $peer = Peer::where('user_id','=',$user->id)->where('ip','=',$this->getIp())->where('port','=',$request->get('port'));
+        $peer = Peer::where('user_id','=',$user->id)->where('ip','=',$this->getIp())->where('port','=',$request->get('port'))->first();
 
         if($peer) {
             $peer->expire = Carbon::parse($peer->expire)->addMinutes(15);
@@ -36,10 +36,13 @@ class TrackerController extends Controller
             $peer = Peer::create(
                 ['user_id' => $user->id, 'ip' => $this->getIp(), 'port' => $request->get('port')]
             );
-            $peer->expire = $peer->expire = Carbon::now()->addMinutes(15);
+            $peer->expire = Carbon::now()->addMinutes(15);
         }
 
         $peer->save();
+
+
+        // Roles assignement
         $leeching = ($request->get('left') != 0);
 
         PeerTorrents::firstOrCreate(
