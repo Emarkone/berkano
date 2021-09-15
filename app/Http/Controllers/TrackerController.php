@@ -108,7 +108,7 @@ class TrackerController extends Controller
                 return ($peer->ip == $this->getIp() && $peer->port == $request->get('port'));
             });
 
-        if ($request->get('compact') != 0) {
+        if ($request->get('compact') != 1) {
             $peers = $peers->map(function ($peer) {
                 return collect($peer->toArray())
                     ->only(['ip', 'port'])
