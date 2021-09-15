@@ -66,13 +66,15 @@ class TrackerController extends Controller
 
         $response = Bencode::encode(array('peers' => $peers, 'complete' => $seeders, 'incomplete'=> $leechers, 'interval' => 600));
 
-        return response()->view('tracker', ['bencode' => $response]);
+        return response($response, 200)
+                  ->header('Content-Type', 'text/plain');
     }
 
 
     protected function failureResponse($reason) {
         $reason = Bencode::encode(array('failure reason' => $reason));
-        return \response()->view('tracker', ['bencode' => $reason]);
+        return response($reason, 200)
+                  ->header('Content-Type', 'text/plain');
     }
 }
    
