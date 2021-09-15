@@ -47,7 +47,7 @@ class TrackerController extends Controller
 
         if(!$peer_torrent) {
             $peer_torrent = PeerTorrents::create(
-                ['peer_id' => $peer->id, 'torrent_id' => $torrent->id]
+                ['peer_id' => $peer->id, 'torrent_id' => $torrent->id, 'leeching' => false]
             );
         }
 
@@ -75,7 +75,7 @@ class TrackerController extends Controller
             PeerTorrents::where('peer_id', '=', $expired_peer->id)->delete();
             $expired_peer->delete();
         }
-        
+
 
         // Peers delivery
         if($request->get('compact') != 1) {
