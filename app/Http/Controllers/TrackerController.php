@@ -28,18 +28,18 @@ class TrackerController extends Controller
         if(!$user) return $this->failureResponse('User unknown');
 
         // Peer management
-        $peer = Peer::firstOrCreate(
-            ['user_id' => $user->id, 'ip' => $this->getIp(), 'port' => $request->get('port')]
-        );
+        $peer = Peer::where('user_id','=',$user->id)->where('ip','=',$this->getIp())->where('port','=',$request->get('port'));
 
-        if(!$peer->expire) {
-            $peer->expire = Carbon::now()->addMinutes(10);
+        if($peer) {
+            $peer->expire = Carbon::parse($peer->expire)->addMinutes(15);
         } else {
-            $peer->expire = Carbon::parse($peer->expire)->addMinutes(10);
+            $peer = Peer::create(
+                ['user_id' => $user->id, 'ip' => $this->getIp(), 'port' => $request->get('port')]
+            );
+            $peer->expire = $peer->expire = Carbon::now()->addMinutes(15);
         }
 
         $peer->save();
-        
         $leeching = ($request->get('left') != 0);
 
         PeerTorrents::firstOrCreate(
@@ -59,7 +59,6 @@ class TrackerController extends Controller
 
         // Cleaning inactive peers
         $expired_peers = Peer::where('expire','<',Carbon::now())->get();
-
         foreach($expired_peers as $expired_peer) {
             PeerTorrents::where('peer_id', '=', $expired_peer->id)->delete();
             $expired_peer->delete();
@@ -81,20 +80,20 @@ class TrackerController extends Controller
         }
 
         // Global stats
-        $leechers = PeerTorrents::where('leeching', '=', 'true')->where('torrent_id','=',$torrent->id)->get()->count();
-        $seeders = PeerTorrents::where('leeching', '=', 'false')->where('torrent_id','=',$torrent->id)->get()->count();
+        $leechers = PeerTorrents::where('leeching', '=', true)->where('torrent_id','=',$torrent->id)->get()->count();
+        $seeders = PeerTorrents::where('leeching', '=', false)->where('torrent_id','=',$torrent->id)->get()->count();
 
         $response = Bencode::encode(array('peers' => $peers, 'complete' => $seeders, 'incomplete'=> $leechers, 'interval' => 600));
 
         return response($response, 200)
-                  ->header('Content-Type', 'text/plain');
+                ->header('Content-Type', 'text/plain');
     }
 
 
     protected function failureResponse($reason) {
         $reason = Bencode::encode(array('failure reason' => $reason));
         return response($reason, 200)
-                  ->header('Content-Type', 'text/plain');
+                ->header('Content-Type', 'text/plain');
     }
 
     protected function getIp(){
