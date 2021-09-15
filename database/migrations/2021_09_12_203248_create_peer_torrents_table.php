@@ -17,7 +17,7 @@ class CreatePeerTorrentsTable extends Migration
             $table->id();
             $table->foreignId('torrent_id');
             $table->foreignId('peer_id');
-            $table->boolean('leeching');
+            $table->boolean('leeching')->default(false);
             $table->timestamps();
         });
     }
