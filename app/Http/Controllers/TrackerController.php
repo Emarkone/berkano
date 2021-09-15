@@ -70,6 +70,8 @@ class TrackerController extends Controller
                     break;
                 case 'completed':
                     $peer_torrent->is_leeching = false;
+                    $torrent->completed++;
+                    $torrent->save();
                 default:
                     break;
             }
@@ -86,27 +88,29 @@ class TrackerController extends Controller
             $inactive_peer->is_active = false;
         }
 
-
         // Peers delivery
-        if($request->get('compact') != 1) {
-            $peers = $torrent->peers
+        $peers = $torrent->peers
             ->filter(function($peer) {
                 return $peer->is_active;
-            })->map(function ($peer) {
+            })
+            ->reject(function ($peer) use ($request) {
+                return ($peer->ip == $this->getIp() && $peer->port == $request->get('port'));
+            });
+
+        if($request->get('compact') != 1) {  
+            $peers = $peers->map(function ($peer) {
                 return collect($peer->toArray())
                 ->only(['ip', 'port'])
                 ->all();
             });
         } else {
-            $peers = hex2bin(implode($torrent->peers
-            ->filter(function ($peer) {
-                return $peer->is_active;
-            })
-            ->map(function ($peer) {
-                $ip = implode(array_map(fn($value): string => substr("00".dechex($value),strlen(dechex($value)),2), explode('.',$peer['ip'])));
-                $port = substr("0000".dechex($peer['port']), strlen(dechex($peer['port'])), 4);
-                return $ip.$port;
-            })->toArray()));
+            $peers = hex2bin(implode(
+                $peers->map(function ($peer) {
+                    $ip = implode(array_map(fn($value): string => substr("00".dechex($value),strlen(dechex($value)),2), explode('.',$peer['ip'])));
+                    $port = substr("0000".dechex($peer['port']), strlen(dechex($peer['port'])), 4);
+                    return $ip.$port;
+                })->toArray()
+            ));
         }
 
         return $this->successResponse(array('peers' => $peers, 'complete' => $seeders, 'incomplete'=> $leechers, 'interval' => $this->interval));

@@ -17,6 +17,7 @@ class CreateTorrentsTable extends Migration
             $table->id();
             $table->foreignId('user_id');
             $table->string('hash');
+            $table->unsignedBigInteger('completed');
             $table->timestamps();
         });
     }
