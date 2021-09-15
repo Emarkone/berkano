@@ -14,7 +14,13 @@ class PeerTorrents extends Model
     protected $fillable = [
         'peer_id',
         'torrent_id',
-        'leeching'
+        'is_leeching',
+        'download',
+        'upload'
+    ];
+
+    protected $cast = [
+        'is_leeching' => 'boolean'
     ];
 
     public function peer() 

@@ -13,6 +13,8 @@ use SandFox\Bencode\Bencode;
 
 class TrackerController extends Controller
 {
+    public $interval = 1800;
+
     public function track(Request $request, $id)
     {
 
@@ -31,36 +33,43 @@ class TrackerController extends Controller
         $peer = Peer::where('user_id','=',$user->id)->where('ip','=',$this->getIp())->where('port','=',$request->get('port'))->first();
 
         if($peer) {
-            $peer->expire = Carbon::parse($peer->expire)->addHours(2);
+            $peer->expire = Carbon::parse($peer->expire)->addHours(6);
         } else {
             $peer = Peer::create(
                 ['user_id' => $user->id, 'ip' => $this->getIp(), 'port' => $request->get('port')]
             );
-            $peer->expire = Carbon::now()->addHours(2);
+            $peer->expire = Carbon::now()->addHours(6);
         }
 
         $peer->save();
 
+        // Global stats
+        $leechers = PeerTorrents::where('is_leeching', '=', true)->where('torrent_id','=',$torrent->id)->get()->count();
+        $seeders = PeerTorrents::where('is_leeching', '=', false)->where('torrent_id','=',$torrent->id)->get()->count();
 
         // Roles assignement
         $peer_torrent = PeerTorrents::where('peer_id','=', $peer->id)->where('torrent_id', '=', $torrent->id)->first();
 
         if(!$peer_torrent) {
             $peer_torrent = PeerTorrents::create(
-                ['peer_id' => $peer->id, 'torrent_id' => $torrent->id, 'leeching' => false]
+                ['peer_id' => $peer->id, 'torrent_id' => $torrent->id, 'is_leeching' => false, 'download' => 0, 'upload' => 0]
             );
         }
 
-        $peer_torrent->leeching = ($request->get('left') != 0);
+        $peer_torrent->is_leeching = ($request->get('left') != 0);
+        $peer_torrent->download = $request->get('downloaded');
+        $peer_torrent->upload = $request->get('uploaded');
 
         if($request->get('event') && !empty($request->get('event'))) {
             switch ($request->get('event')) {
+                case 'started':
+                    $peer->is_active = true;
+                    $peer_torrent->is_leeching = true;
                 case 'stopped':
-                    $peer_torrent->delete();
-                    $peer->delete();
+                    $peer->is_active = false;
                     break;
                 case 'completed':
-                    $peer_torrent->leeching = false;
+                    $peer_torrent->is_leeching = false;
                 default:
                     break;
             }
@@ -68,44 +77,50 @@ class TrackerController extends Controller
 
         $peer_torrent->save();
 
+        // Shortcut if already downloaded
+        if($request->get('left') == 0) return $this->successResponse(array('complete' => $seeders, 'incomplete'=> $leechers, 'interval' => $this->interval));
 
         // Cleaning inactive peers
-        $expired_peers = Peer::where('expire','<',Carbon::now())->get();
-        foreach($expired_peers as $expired_peer) {
-            PeerTorrents::where('peer_id', '=', $expired_peer->id)->delete();
-            $expired_peer->delete();
+        $inactive_peers = Peer::where('expire','<',Carbon::now())->get();
+        foreach($inactive_peers as $inactive_peer) {
+            $inactive_peer->is_active = false;
         }
 
 
         // Peers delivery
         if($request->get('compact') != 1) {
-            $peers = $torrent->peers->map(function ($peer) {
+            $peers = $torrent->peers
+            ->filter(function($peer) {
+                return $peer->is_active;
+            })->map(function ($peer) {
                 return collect($peer->toArray())
                 ->only(['ip', 'port'])
                 ->all();
             });
         } else {
-            $peers = hex2bin(implode($torrent->peers->map(function ($peer) {
+            $peers = hex2bin(implode($torrent->peers
+            ->filter(function ($peer) {
+                return $peer->is_active;
+            })
+            ->map(function ($peer) {
                 $ip = implode(array_map(fn($value): string => substr("00".dechex($value),strlen(dechex($value)),2), explode('.',$peer['ip'])));
                 $port = substr("0000".dechex($peer['port']), strlen(dechex($peer['port'])), 4);
                 return $ip.$port;
             })->toArray()));
         }
 
-        // Global stats
-        $leechers = PeerTorrents::where('leeching', '=', true)->where('torrent_id','=',$torrent->id)->get()->count();
-        $seeders = PeerTorrents::where('leeching', '=', false)->where('torrent_id','=',$torrent->id)->get()->count();
-
-        $response = Bencode::encode(array('peers' => $peers, 'complete' => $seeders, 'incomplete'=> $leechers, 'interval' => 600));
-
-        return response($response, 200)
-                ->header('Content-Type', 'text/plain');
+        return $this->successResponse(array('peers' => $peers, 'complete' => $seeders, 'incomplete'=> $leechers, 'interval' => $this->interval));
     }
 
 
     protected function failureResponse($reason) {
         $reason = Bencode::encode(array('failure reason' => $reason));
         return response($reason, 200)
+                ->header('Content-Type', 'text/plain');
+    }
+
+    protected function successResponse($response) {
+        return response(Bencode::encode($response), 200)
                 ->header('Content-Type', 'text/plain');
     }
 

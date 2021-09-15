@@ -17,6 +17,10 @@ class Peer extends Model
         'expire'
     ];
 
+    protected $cast = [
+        'is_active' => 'boolean'
+    ];
+
     public function user()
     {
         return $this->hasOne(User::class);
