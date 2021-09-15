@@ -31,6 +31,7 @@ class TrackerController extends Controller
         );
     
         $leeching = ($request->get('left') != 0);
+
         $peerTorrent = PeerTorrents::firstOrCreate(
             ['peer_id' => $peer->id, 'torrent_id' => $torrent->id, 'leeching' => $leeching]
         );
@@ -46,7 +47,7 @@ class TrackerController extends Controller
             }
         }
         
-        if($request->get('compact') !== '1') {
+        if($request->get('compact') === '1') {
             $peers = $torrent->peers->map(function ($peer) {
                 return collect($peer->toArray())
                 ->only(['ip', 'port'])
