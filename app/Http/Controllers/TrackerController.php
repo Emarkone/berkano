@@ -54,12 +54,11 @@ class TrackerController extends Controller
                 ->all();
             });
         } else {
-            $peers = $torrent->peers->map(function ($peer) {
-                $_ip = implode('',array_map(fn($value): string => substr("00".dechex($value),strlen(dechex($value)),2), explode('.',$peer['ip'])));
+            $peers = hex2bin(implode($torrent->peers->map(function ($peer) {
+                $_ip = implode(array_map(fn($value): string => substr("00".dechex($value),strlen(dechex($value)),2), explode('.',$peer['ip'])));
                 $_port = substr("0000".dechex($peer['port']), strlen(dechex($peer['port'])), 4);
                 return $_ip.$_port;
-            });
-            $peers = hex2bin(implode('', $peers));
+            })->toArray()));
         }
 
         $leechers = PeerTorrents::where('leeching', '=', 'true')->where('torrent_id','=',$torrent->id)->get()->count();
