@@ -22,24 +22,25 @@ class TrackerController extends Controller
     public $seeders;
     public $completed;
 
-    protected function basicAuth(Request $request, $id)
+
+    public function track(Request $request, $id)
     {
+
         if ($request->get('test')) {
             $this->torrent = Torrent::where('hash', '=', $request->get('info_hash'))->first();
         } else {
             $this->torrent = Torrent::where('hash', '=', bin2hex($request->get('info_hash')))->first();
         }
 
-        if (!$this->torrent) return $this->failureResponse('File unknown');
+        if (is_null($this->torrent)) {
+            return $this->failureResponse('File unknown');
+        } 
 
         $this->user = User::where('uuid', '=', $id)->first();
-        if (!$this->user) return $this->failureResponse('User unknown');
-    }
+        if (is_null($this->user)) {
+            return $this->failureResponse('User unknown');
+        }
 
-    public function track(Request $request, $id)
-    {
-
-        $this->basicAuth($request, $id);
         $this->stats();
 
         // Peer management
@@ -107,7 +108,7 @@ class TrackerController extends Controller
                 return ($peer->ip == $this->getIp() && $peer->port == $request->get('port'));
             });
 
-        if ($request->get('compact') != 1) {
+        if ($request->get('compact') != 0) {
             $peers = $peers->map(function ($peer) {
                 return collect($peer->toArray())
                     ->only(['ip', 'port'])
@@ -128,6 +129,21 @@ class TrackerController extends Controller
 
     public function scrape(Request $request, $id)
     {
+        if ($request->get('test')) {
+            $this->torrent = Torrent::where('hash', '=', $request->get('info_hash'))->first();
+        } else {
+            $this->torrent = Torrent::where('hash', '=', bin2hex($request->get('info_hash')))->first();
+        }
+
+        if (is_null($this->torrent)) {
+            return $this->failureResponse('File unknown');
+        } 
+
+        $this->user = User::where('uuid', '=', $id)->first();
+        if (is_null($this->user)) {
+            return $this->failureResponse('User unknown');
+        }
+
         $this->basicAuth($request, $id);
         $this->stats();
 
@@ -140,11 +156,11 @@ class TrackerController extends Controller
 
         $this->leechers = $torrents->filter(function ($torrent) {
             return $torrent->is_leeching;
-        });
+        })->count();
 
         $this->seeders  = $torrents->reject(function ($torrent) {
             return $torrent->is_leeching;
-        });
+        })->count();
 
         $this->completed = $this->torrent->completed;
     }
