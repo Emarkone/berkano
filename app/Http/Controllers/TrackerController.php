@@ -81,9 +81,6 @@ class TrackerController extends Controller
             switch ($request->get('event')) {
                 case 'started':
                     $peer_torrent->is_leeching = true;
-                case 'stopped':
-                    $peer->is_active = false;
-                    break;
                 case 'completed':
                     $peer_torrent->is_leeching = false;
                     $this->torrent->completed++;
