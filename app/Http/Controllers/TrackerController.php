@@ -34,13 +34,13 @@ class TrackerController extends Controller
         }
 
         if (is_null($this->torrent)) {
-            $this->failure_reason = 'File unknown';
+            $this->failure_reason = 'file unknown';
             return false;
-        } 
+        }
 
         $this->user = User::where('uuid', '=', $id)->first();
         if (is_null($this->user)) {
-            $this->failure_reason = 'File unknown';
+            $this->failure_reason = 'user unknown';
             return false;
         }
 
@@ -55,28 +55,23 @@ class TrackerController extends Controller
         $this->stats();
 
         // Peer management
-        $peer = Peer::where('user_id', '=', $this->user->id)->where('ip', '=', $this->getIp())->where('port', '=', $request->get('port'))->first();
-
-        if ($peer) {
-            $peer->expire = Carbon::parse($peer->expire)->addHours(6);
-        } else {
-            $peer = Peer::create(
+        $peer = Peer::where('user_id', '=', $this->user->id)->where('ip', '=', $this->getIp())->where('port', '=', $request->get('port'))->firstOr(function() use ($request) {
+            return Peer::create(
                 ['user_id' => $this->user->id, 'ip' => $this->getIp(), 'port' => $request->get('port')]
             );
-            $peer->expire = Carbon::now()->addHours(6);
-        }
+        });
 
+        $peer->last_seen = Carbon::now();
         $peer->is_active = true;
-        $peer->save();
 
         // Roles assignement
-        $peer_torrent = PeerTorrents::where('peer_id', '=', $peer->id)->where('torrent_id', '=', $this->torrent->id)->first();
-
-        if (!$peer_torrent) {
-            $peer_torrent = PeerTorrents::create(
+        $peer_torrent = PeerTorrents::where('peer_id', '=', $peer->id)->where('torrent_id', '=', $this->torrent->id)->firstOr(
+            function() use ($peer) {
+             return PeerTorrents::create(
                 ['peer_id' => $peer->id, 'torrent_id' => $this->torrent->id, 'is_leeching' => false, 'download' => 0, 'upload' => 0]
             );
-        }
+            }
+        );
 
         $peer_torrent->is_leeching = ($request->get('left') != 0);
         $peer_torrent->download = $request->get('downloaded');
@@ -85,7 +80,6 @@ class TrackerController extends Controller
         if ($request->get('event') && !empty($request->get('event'))) {
             switch ($request->get('event')) {
                 case 'started':
-                    $peer->is_active = true;
                     $peer_torrent->is_leeching = true;
                 case 'stopped':
                     $peer->is_active = false;
@@ -100,12 +94,13 @@ class TrackerController extends Controller
         }
 
         $peer_torrent->save();
+        $peer->save();
 
         // Shortcut if already downloaded
         if ($request->get('left') == 0) return $this->successResponse(array('complete' => $this->seeders, 'incomplete' => $this->leechers, 'interval' => $this->interval));
 
         // Cleaning inactive peers
-        $inactive_peers = Peer::where('expire', '<', Carbon::now())->get();
+        $inactive_peers = Peer::where('last_seen', '<', Carbon::now()->subSeconds($this->interval*1.5))->get();
         foreach ($inactive_peers as $inactive_peer) {
             $inactive_peer->is_active = false;
         }
