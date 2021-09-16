@@ -94,7 +94,7 @@ class TrackerController extends Controller
         $peer->save();
 
         // Shortcut if already downloaded
-        if ($request->get('left') == 0) return $this->successResponse(array('complete' => $this->seeders, 'incomplete' => $this->leechers, 'interval' => $this->interval));
+        // if ($request->get('left') == 0) return $this->successResponse(array('complete' => $this->seeders, 'incomplete' => $this->leechers, 'interval' => $this->interval));
 
         // Cleaning inactive peers
         $inactive_peers = Peer::where('last_seen', '<', Carbon::now()->subSeconds($this->interval*1.5))->get();
