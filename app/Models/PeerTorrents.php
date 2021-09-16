@@ -9,6 +9,8 @@ class PeerTorrents extends Model
 {
     protected $table = 'peer_torrent';
 
+    protected $with = ['peer'];
+
     use HasFactory;
 
     protected $fillable = [
@@ -35,11 +37,11 @@ class PeerTorrents extends Model
 
     public function peer() 
     {
-        return $this->hasOne('peer');
+        return $this->hasOne(Peer::class, 'id', 'peer_id');
     }
 
     public function torrent() 
     {
-        return $this->hasOne('torrent');
+        return $this->hasOne(Torrent::class);
     }
 }

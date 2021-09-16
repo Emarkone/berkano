@@ -20,6 +20,8 @@ class TrackerController extends Controller
     public $user;
     public $torrent;
 
+    public $new_peer;
+
     public $leechers;
     public $seeders;
     public $completed;
@@ -93,18 +95,23 @@ class TrackerController extends Controller
         $peer_torrent->save();
         $peer->save();
 
-        // Shortcut if already downloaded
-        // if ($request->get('left') == 0) return $this->successResponse(array('complete' => $this->seeders, 'incomplete' => $this->leechers, 'interval' => $this->interval));
-
         // Cleaning inactive peers
         $inactive_peers = Peer::where('last_seen', '<', Carbon::now()->subSeconds($this->interval*1.5))->get();
         foreach ($inactive_peers as $inactive_peer) {
             $inactive_peer->is_active = false;
+            $inactive_peer->save();
         }
 
         // Peers delivery
-        $peers = $this->torrent->peers
-            ->filter(function ($peer) {
+        if($peer_torrent->is_leeching) {
+            $peers = PeerTorrents::where('torrent_id','=', $this->torrent->id)->get();
+        } else {
+            $peers = PeerTorrents::where('torrent_id','=', $this->torrent->id)->where('is_leeching','=', true)->get();
+        }
+
+        $peers = collect($peers->pluck('peer'));
+
+        $peers = $peers->filter(function ($peer) {
                 return $peer->is_active;
             })
             ->reject(function ($peer) use ($request) {
@@ -153,7 +160,6 @@ class TrackerController extends Controller
 
         $this->completed = $this->torrent->completed;
     }
-
 
     protected function failureResponse()
     {
