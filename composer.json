@@ -12,7 +12,9 @@
         "laravel/framework": "^8.54",
         "laravel/sanctum": "^2.11",
         "laravel/tinker": "^2.5",
-        "sandfoxme/bencode": "^1.6"
+        "predis/predis": "^1.1",
+        "sandfoxme/bencode": "^1.6",
+        "sandfoxme/torrent-file": "^2.1"
     },
     "require-dev": {
         "facade/ignition": "^2.5",

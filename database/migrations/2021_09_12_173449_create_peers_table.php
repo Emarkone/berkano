@@ -15,7 +15,7 @@ class CreatePeersTable extends Migration
     {
         Schema::create('peers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id');
+            $table->foreignId('user_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->ipAddress('ip');
             $table->integer('port');
             $table->dateTime('last_seen')->nullable();

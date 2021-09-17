@@ -15,8 +15,8 @@ class CreatePeerTorrentsTable extends Migration
     {
         Schema::create('peer_torrent', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('torrent_id');
-            $table->foreignId('peer_id');
+            $table->foreignId('torrent_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
+            $table->foreignId('peer_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->unsignedBigInteger('download')->default(0);
             $table->unsignedBigInteger('upload')->default(0);
             $table->boolean('is_leeching')->default(false);

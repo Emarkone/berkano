@@ -15,7 +15,7 @@ class CreateTorrentsTable extends Migration
     {
         Schema::create('torrents', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id');
+            $table->foreignId('user_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->string('hash');
             $table->unsignedBigInteger('completed');
             $table->timestamps();
