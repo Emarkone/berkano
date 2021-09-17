@@ -96,10 +96,12 @@ class TrackerController extends Controller
         $peer->save();
 
         // Cleaning inactive peers
-        $inactive_peers = Peer::where('last_seen', '<', Carbon::now()->subSeconds($this->interval*1.5))->get();
-        foreach ($inactive_peers as $inactive_peer) {
-            $inactive_peer->is_active = false;
-            $inactive_peer->save();
+        $inactive_peers = Peer::where('is_active','=',true)->where('last_seen', '<', Carbon::now()->subSeconds($this->interval*1.5))->get();
+        if($inactive_peers) {
+            foreach ($inactive_peers as $inactive_peer) {
+                $inactive_peer->is_active = false;
+                $inactive_peer->save();
+            }
         }
 
         // Peers delivery
