@@ -198,9 +198,8 @@ class TrackerController extends Controller
     protected function stats()
     {
         $peer_torrents = PeerTorrents::where('torrent_id', '=', $this->torrent->id)
-        ->whereHas('peer', function (Builder $query) {
-            $query->where('is_active', '=', true);
-        })->get();
+        ->whereRelation('peer', 'is_active', true)
+        ->get();
 
         $this->leechers = $peer_torrents->filter(function ($torrent) {
             return ($torrent->is_leeching);
