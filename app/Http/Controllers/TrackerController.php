@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\PeerDelivery;
 use App\Models\Peer;
 use Illuminate\Http\Request;
 use App\Models\Torrent;
@@ -25,6 +26,7 @@ class TrackerController extends Controller
     public $peer_torrent;
 
     public $dirty = false;
+    public $cache_hit = true;
 
     public $leechers;
     public $seeders;
@@ -125,33 +127,41 @@ class TrackerController extends Controller
         };
 
         // Peers caching
-        if(!$this->dirty) {
-            if($this->peer_torrent->is_leeching) {
-                if($request->get('compact') == 1 && Cache::has('torrent_response_compact_leecher_' . $this->torrent->hash)) {
+
+        $response = null;
+
+        while (!$response) {
+            if ($this->peer_torrent->is_leeching) {
+                if ($request->get('compact') == 1 && Cache::has('torrent_response_compact_leecher_' . $this->torrent->hash)) {
                     $response = Cache::get('torrent_response_compact_leecher_' . $this->torrent->hash);
                 } elseif ($request->get('compact') == 0 && Cache::has('torrent_response_leecher_' . $this->torrent->hash)) {
                     $response = Cache::get('torrent_response_leecher_' . $this->torrent->hash);
-                } else {
-                    $response = $this->peerDelivery($request);
                 }
             } else {
-                if($request->get('compact') == 1 && Cache::has('torrent_response_compact_' . $this->torrent->hash)) {
+                if ($request->get('compact') == 1 && Cache::has('torrent_response_compact_' . $this->torrent->hash)) {
                     $response = Cache::get('torrent_response_compact_' . $this->torrent->hash);
                 } elseif ($request->get('compact') == 0 && Cache::has('torrent_response_' . $this->torrent->hash)) {
                     $response = Cache::get('torrent_response_' . $this->torrent->hash);
-                } else {
-                    $response = $this->peerDelivery($request);
                 }
             }
-        } else {
-            $response = $this->peerDelivery($request);
+
+            if (!$response) {
+                $this->stats();
+                $infos = array('seeders' => $this->seeders, 'leechers' => $this->leechers, 'interval' => $this->interval, 'is_leeching' => $this->peer_torrent->is_leeching, 'compact' => ($request->get('compact') == 1));
+                PeerDelivery::dispatchSync($this->torrent, $infos);
+                $this->cache_hit = false;
+            }
+        }
+
+        if ($this->dirty && $this->cache_hit) {
+            $this->stats();
+            $infos = array('seeders' => $this->seeders, 'leechers' => $this->leechers, 'interval' => $this->interval, 'is_leeching' => $this->peer_torrent->is_leeching, 'compact' => ($request->get('compact') == 1));
+            PeerDelivery::dispatchAfterResponse($this->torrent, $infos);
         }
 
         return response($response, 200)
             ->header('Content-Type', 'text/plain');
     }
-
-
 
     public function scrape(Request $request, $id)
     {
@@ -167,56 +177,6 @@ class TrackerController extends Controller
 
         return response($response, 200)
             ->header('Content-Type', 'text/plain');
-    }
-
-    protected function peerDelivery(Request $request)
-    {
-        $this->stats();
-
-        $numwant = $request->get('numwant') ?? 30;
-
-        if ($this->peer_torrent->is_leeching) {
-            $this->peers = Peer::whereRelation('peer_relations', 'torrent_id', $this->torrent->id)
-                ->where('is_active', '=', true)
-                ->orderBy('last_seen', 'DESC')
-                ->limit($numwant)
-                ->get();
-        } else {
-            $this->peers = Peer::whereRelation('peer_relations', 'torrent_id', $this->torrent->id)
-                ->whereRelation('peer_relations', 'is_leeching', true)
-                ->where('is_active', '=', true)
-                ->orderBy('last_seen', 'DESC')
-                ->limit($numwant)
-                ->get();
-        }
-
-        $this->peers = $this->peers->reject(function ($peer) use ($request) {
-            return ($peer->ip == $this->getIp() && $peer->port == $request->get('port'));
-        });
-
-        if ($request->get('compact') != 1) {
-            $this->peers = $this->peers->map(function ($peer) {
-                return collect($peer->toArray())
-                    ->only(['ip', 'port'])
-                    ->all();
-            });
-        } else {
-            $this->peers = hex2bin(implode(
-                $this->peers->map(function ($peer) {
-                    $ip = implode(array_map(fn ($value): string => substr('00' . dechex($value), strlen(dechex($value)), 2), explode('.', $peer['ip'])));
-                    $port = substr('0000' . dechex($peer['port']), strlen(dechex($peer['port'])), 4);
-                    return $ip . $port;
-                })->toArray()
-            ));
-        }
-
-        $response = Bencode::encode(array('peers' => $this->peers, 'complete' => $this->seeders, 'incomplete' => $this->leechers, 'interval' => $this->interval));
-
-        ($request->get('compact') == 1)
-            ? Cache::put(($this->peer_torrent->is_leeching) ? 'torrent_response_compact_leecher_' . $this->torrent->hash : 'torrent_response_compact_' . $this->torrent->hash, $response)
-            : Cache::put(($this->peer_torrent->is_leeching) ? 'torrent_response_leecher_' . $this->torrent->hash : 'torrent_response_' . $this->torrent->hash, $response);
-
-        return $response;
     }
 
     protected function stats()
