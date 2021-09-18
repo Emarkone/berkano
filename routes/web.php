@@ -17,6 +17,3 @@ use App\Http\Controllers\TrackerController;
 Route::get('/', function () {
     return view('welcome');
 });
-
-Route::get('/{id}/announce', [TrackerController::class, 'track'])->name('announce');
-Route::get('/{id}/scrape', [TrackerController::class, 'scrape'])->name('scrape');

@@ -44,6 +44,10 @@ class Kernel extends HttpKernel
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
+
+        'tracker' => [
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        ]
     ];
 
     /**

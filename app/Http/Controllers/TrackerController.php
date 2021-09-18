@@ -145,7 +145,6 @@ class TrackerController extends Controller
             }
         } else {
             $response = $this->peerDelivery($request);
-            Log::debug('3');
         }
 
         return response($response, 200)
@@ -167,7 +166,7 @@ class TrackerController extends Controller
         }
 
         return response($response, 200)
-            ->header('Content-Type', 'text/plain');
+            ->getContent();
     }
 
     protected function peerDelivery(Request $request)
@@ -220,8 +219,6 @@ class TrackerController extends Controller
         return $response;
     }
 
-
-
     protected function stats()
     {
         $peer_torrents = PeerTorrents::where('torrent_id', '=', $this->torrent->id)
@@ -243,7 +240,7 @@ class TrackerController extends Controller
     {
         $reason = Bencode::encode(array('failure reason' => $this->failure_reason));
         return response($reason, 200)
-            ->header('Content-Type', 'text/plain');
+            ->getData();
     }
 
     protected function getIp()
