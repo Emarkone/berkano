@@ -132,20 +132,20 @@ class TrackerController extends Controller
             $numwant = $request->get('numwant') ?? 30;
 
             if ($peer_torrent->is_leeching) {
-                $peers = Peer::whereHas('peer_relations', 'torrent_id', $this->torrent->id)
+                $peers = Peer::whereRelation('peer_relations', 'torrent_id', $this->torrent->id)
                     ->where('is_active', '=', true)
                     ->orderBy('last_seen', 'DESC')
                     ->limit($numwant)
                     ->get();
             } else {
-                $peers = Peer::whereHas('peer_relations', 'torrent_id', $this->torrent->id)
-                    ->whereHas('peer_relations', 'is_leeching', true)
+                $peers = Peer::whereRelation('peer_relations', 'torrent_id', $this->torrent->id)
+                    ->whereRelation('peer_relations', 'is_leeching', true)
                     ->where('is_active', '=', true)
                     ->orderBy('last_seen', 'DESC')
                     ->limit($numwant)
                     ->get();
             }
-            
+
             $peer->reject(function ($peer) use ($request) {
                 return ($peer->ip == $this->getIp() && $peer->port == $request->get('port'));
             });
