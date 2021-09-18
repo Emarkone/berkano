@@ -199,11 +199,11 @@ class TrackerController extends Controller
         $peer_torrents = PeerTorrents::where('torrent_id', '=', $this->torrent->id)->get();
 
         $this->leechers = $peer_torrents->filter(function ($torrent) {
-            return ($torrent->is_leeching && $torrent->peer->is_active);
+            return ($torrent->is_leeching && $torrent->peer->is_active ?? false);
         })->count();
 
         $this->seeders  = $peer_torrents->reject(function ($torrent) {
-            return ($torrent->is_leeching && $torrent->peer->is_active);
+            return ($torrent->is_leeching && $torrent->peer->is_active ?? false);
         })->count();
 
         $this->completed = $this->torrent->completed;
