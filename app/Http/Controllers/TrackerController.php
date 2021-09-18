@@ -68,7 +68,7 @@ class TrackerController extends Controller
                 }
             );
 
-        $peer->last_seen = Carbon::now();
+        $peer->last_seen = now();
         $peer->is_active = true;
 
         // Roles assignement
@@ -116,7 +116,7 @@ class TrackerController extends Controller
         // Cleaning inactive peers
         if (
             Peer::where('is_active', '=', true)
-            ->where('last_seen', '<', Carbon::now()->subSeconds($this->interval * 1.5))
+            ->where('last_seen', '<', now()->subSeconds($this->interval * 1.5))
             ->update(['is_active' => false]) != 0
         ) {
             $this->dirty = true;
