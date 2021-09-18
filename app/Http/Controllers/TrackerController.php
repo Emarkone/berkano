@@ -166,7 +166,7 @@ class TrackerController extends Controller
         }
 
         return response($response, 200)
-            ->getContent();
+            ->header('Content-Type', 'text/plain');
     }
 
     protected function peerDelivery(Request $request)
@@ -240,7 +240,7 @@ class TrackerController extends Controller
     {
         $reason = Bencode::encode(array('failure reason' => $this->failure_reason));
         return response($reason, 200)
-            ->getData();
+            ->header('Content-Type', 'text/plain');
     }
 
     protected function getIp()
