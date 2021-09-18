@@ -9,6 +9,7 @@ use App\Models\Torrent;
 use App\Models\User;
 use App\Models\PeerTorrents;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use SandFox\Bencode\Bencode;
 
@@ -196,14 +197,17 @@ class TrackerController extends Controller
 
     protected function stats()
     {
-        $peer_torrents = PeerTorrents::where('torrent_id', '=', $this->torrent->id)->get();
+        $peer_torrents = PeerTorrents::where('torrent_id', '=', $this->torrent->id)
+        ->whereHas('peer', function (Builder $query) {
+            $query->where('is_active', '=', true);
+        })->get();
 
         $this->leechers = $peer_torrents->filter(function ($torrent) {
-            return ($torrent->is_leeching && $torrent->peer->is_active ?? false);
+            return ($torrent->is_leeching);
         })->count();
 
         $this->seeders  = $peer_torrents->reject(function ($torrent) {
-            return ($torrent->is_leeching && $torrent->peer->is_active ?? false);
+            return ($torrent->is_leeching);
         })->count();
 
         $this->completed = $this->torrent->completed;
