@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Peer;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use App\Models\Torrent;
 use App\Models\User;
 use App\Models\PeerTorrents;
@@ -133,30 +132,23 @@ class TrackerController extends Controller
             $numwant = $request->get('numwant') ?? 30;
 
             if ($peer_torrent->is_leeching) {
-                $peers = PeerTorrents::with(array('peer' => function($query) {
-                    $query->orderBy('last_seen', 'DESC');
-                }))
-                ->where('torrent_id', '=', $this->torrent->id)
-                ->limit($numwant)
-                ->get();
+                $peers = Peer::whereHas('peer_relations', 'torrent_id', $this->torrent->id)
+                    ->where('is_active', '=', true)
+                    ->orderBy('last_seen', 'DESC')
+                    ->limit($numwant)
+                    ->get();
             } else {
-                $peers = PeerTorrents::with(array('peer' => function($query) {
-                    $query->orderBy('last_seen', 'DESC');
-                }))
-                ->where('torrent_id', '=', $this->torrent->id)
-                ->where('is_leeching', '=', true)
-                ->limit($numwant)
-                ->get();
+                $peers = Peer::whereHas('peer_relations', 'torrent_id', $this->torrent->id)
+                    ->whereHas('peer_relations', 'is_leeching', true)
+                    ->where('is_active', '=', true)
+                    ->orderBy('last_seen', 'DESC')
+                    ->limit($numwant)
+                    ->get();
             }
-
-            $peers = collect($peers->pluck('peer'));
-
-            $peers = $peers->filter(function ($peer) {
-                return $peer->is_active;
-            })
-                ->reject(function ($peer) use ($request) {
-                    return ($peer->ip == $this->getIp() && $peer->port == $request->get('port'));
-                });
+            
+            $peer->reject(function ($peer) use ($request) {
+                return ($peer->ip == $this->getIp() && $peer->port == $request->get('port'));
+            });
 
             if ($request->get('compact') != 1) {
                 $peers = $peers->map(function ($peer) {
@@ -198,8 +190,8 @@ class TrackerController extends Controller
     protected function stats()
     {
         $peer_torrents = PeerTorrents::where('torrent_id', '=', $this->torrent->id)
-        ->whereRelation('peer', 'is_active', true)
-        ->get();
+            ->whereRelation('peer', 'is_active', true)
+            ->get();
 
         $this->leechers = $peer_torrents->filter(function ($torrent) {
             return ($torrent->is_leeching);

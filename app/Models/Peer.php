@@ -30,4 +30,9 @@ class Peer extends Model
     {
         return $this->belongsToMany(Torrent::class, 'peer_torrent', 'peer_id', 'torrent_id');
     }
+
+    public function peer_relations()
+    {
+        return $this->hasMany(PeerTorrents::class, 'peer_id', 'id');
+    }
 }
