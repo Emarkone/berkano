@@ -132,14 +132,18 @@ class TrackerController extends Controller
             $numwant = $request->get('numwant') ?? 30;
 
             if ($peer_torrent->is_leeching) {
-                $peers = PeerTorrents::where('torrent_id', '=', $this->torrent->id)
-                ->orderBy('peer.last_seen', 'DESC')
+                $peers = PeerTorrents::with(array('peer' => function($query) {
+                    $query->orderBy('last_seen', 'DESC');
+                }))
+                ->where('torrent_id', '=', $this->torrent->id)
                 ->limit($numwant)
                 ->get();
             } else {
-                $peers = PeerTorrents::where('torrent_id', '=', $this->torrent->id)
+                $peers = PeerTorrents::with(array('peer' => function($query) {
+                    $query->orderBy('last_seen', 'DESC');
+                }))
+                ->where('torrent_id', '=', $this->torrent->id)
                 ->where('is_leeching', '=', true)
-                ->orderBy('peer.last_seen', 'DESC')
                 ->limit($numwant)
                 ->get();
             }
@@ -214,14 +218,14 @@ class TrackerController extends Controller
 
     protected function getIp()
     {
-        if (request()->ip() == '192.168.1.1' || request()->ip() == '127.0.0.1') return file_get_contents("http://ipecho.net/plain");
+        if (request()->ip() == '192.168.1.1' || request()->ip() == '127.0.0.1') return env('EXTERNAL_IP');
 
         foreach (array('HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 'HTTP_X_CLUSTER_CLIENT_IP', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR') as $key) {
             if (array_key_exists($key, $_SERVER) === true) {
                 foreach (explode(',', $_SERVER[$key]) as $ip) {
                     $ip = trim($ip); // just to be safe
                     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
-                        if ($ip == '192.168.1.1' || $ip == '127.0.0.1') return file_get_contents("http://ipecho.net/plain");
+                        if ($ip == '192.168.1.1' || $ip == '127.0.0.1') return env('EXTERNAL_IP');
                         return $ip;
                     }
                 }
