@@ -129,10 +129,19 @@ class TrackerController extends Controller
         } else {
             $this->stats();
 
+            $numwant = $request->get('numwant') ?? 30;
+
             if ($peer_torrent->is_leeching) {
-                $peers = PeerTorrents::where('torrent_id', '=', $this->torrent->id)->get();
+                $peers = PeerTorrents::where('torrent_id', '=', $this->torrent->id)
+                ->orderBy('peer.last_seen', 'DESC')
+                ->limit($numwant)
+                ->get();
             } else {
-                $peers = PeerTorrents::where('torrent_id', '=', $this->torrent->id)->where('is_leeching', '=', true)->get();
+                $peers = PeerTorrents::where('torrent_id', '=', $this->torrent->id)
+                ->where('is_leeching', '=', true)
+                ->orderBy('peer.last_seen', 'DESC')
+                ->limit($numwant)
+                ->get();
             }
 
             $peers = collect($peers->pluck('peer'));
@@ -218,7 +227,7 @@ class TrackerController extends Controller
                 }
             }
         }
-        
+
         return request()->ip(); // it will return server ip when no client ip found
     }
 }
