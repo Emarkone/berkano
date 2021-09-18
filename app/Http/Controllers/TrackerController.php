@@ -168,7 +168,9 @@ class TrackerController extends Controller
 
             $response = Bencode::encode(array('peers' => $peers, 'complete' => $this->seeders, 'incomplete' => $this->leechers, 'interval' => $this->interval));
 
-            ($request->get('compact') == 1) ? Cache::put('torrent_response_compact_' . $this->torrent->hash, $response, $this->interval * 3) : Cache::put('torrent_response_' . $this->torrent->hash, $response, $this->interval * 3);
+            ($request->get('compact') == 1) 
+            ? Cache::put('torrent_response_compact_' . $this->torrent->hash, $response) 
+            : Cache::put('torrent_response_' . $this->torrent->hash, $response);
         }
 
         return response($response, 200)
@@ -179,9 +181,13 @@ class TrackerController extends Controller
     {
         if (!$this->basicAuth($request, $id)) return $this->failureResponse();
 
-        $this->stats();
-
-        $response = Bencode::encode(array('file' => $request->get('info_hash'), 'complete' => $this->seeders, 'downloaded' => $this->completed, 'incomplete' => $this->leechers));
+        if (Cache::has('torrent_response_scrape_' . $this->torrent->hash)) {
+            $response = Cache::get('torrent_response_scrape_' . $this->torrent->hash);
+        } else {
+            $this->stats();
+            $response = Bencode::encode(array('file' => $request->get('info_hash'), 'complete' => $this->seeders, 'downloaded' => $this->completed, 'incomplete' => $this->leechers));
+            Cache::put('torrent_response_scrape_' . $this->torrent->hash, $response, now()->addHour(2));
+        }
 
         return response($response, 200)
             ->header('Content-Type', 'text/plain');
