@@ -146,7 +146,7 @@ class TrackerController extends Controller
                     ->get();
             }
 
-            $peer->reject(function ($peer) use ($request) {
+            $peers = $peers->reject(function ($peer) use ($request) {
                 return ($peer->ip == $this->getIp() && $peer->port == $request->get('port'));
             });
 
